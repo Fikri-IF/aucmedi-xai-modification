@@ -10,6 +10,7 @@ dist/
 release.sh
 
 # Testing
+testing/
 .pytest_cache
 debug.sh
 debug.py
@@ -17,3 +18,4 @@ debug.py
 # Visual Studio Code
 .vscode
 .venv
+

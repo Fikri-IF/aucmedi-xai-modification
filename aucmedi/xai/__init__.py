@@ -49,4 +49,5 @@
 #-----------------------------------------------------#
 # Import XAI functionalities
 from aucmedi.xai.methods import xai_dict
-from aucmedi.xai.decoder import xai_decoder
+from aucmedi.xai.decoder import XAIDecoder
+from aucmedi.xai.decoder import XAIResult

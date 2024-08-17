@@ -19,56 +19,51 @@
 #-----------------------------------------------------#
 #                   Library imports                   #
 #-----------------------------------------------------#
-# External Libraries
+import shap
 import numpy as np
 import tensorflow as tf
 # Internal Libraries
 from aucmedi.xai.methods.xai_base import XAImethod_Base
 
 #-----------------------------------------------------#
-#           Saliency Maps / Backpropagation           #
+#                        SHAP                         #
 #-----------------------------------------------------#
-class SaliencyMap(XAImethod_Base):
-    """ XAI Method for Saliency Map (also called Backpropagation).
+class Shap(XAImethod_Base):
+    """ XAI Method for SHapley Additive exPlanations (SHAP).
 
     Normally, this class is used internally in the [aucmedi.xai.decoder.xai_decoder][] in the AUCMEDI XAI module.
 
     ??? abstract "Reference - Implementation #1"
-        Author: Yasuhiro Kubota <br>
-        GitHub Profile: [https://github.com/keisen](https://github.com/keisen) <br>
-        Date: Aug 11, 2020 <br>
-        [https://github.com/keisen/tf-keras-vis/](https://github.com/keisen/tf-keras-vis/) <br>
 
     ??? abstract "Reference - Implementation #2"
-        Author: Huynh Ngoc Anh <br>
-        GitHub Profile: [https://github.com/experiencor](https://github.com/experiencor) <br>
-        Date: Jun 23, 2017 <br>
-        [https://github.com/experiencor/deep-viz-keras/](https://github.com/experiencor/deep-viz-keras/) <br>
 
     ??? abstract "Reference - Publication"
-        Karen Simonyan, Andrea Vedaldi, Andrew Zisserman. 20 Dec 2013.
-        Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps.
-        <br>
-        [https://arxiv.org/abs/1312.6034](https://arxiv.org/abs/1312.6034)
 
     This class provides functionality for running the compute_heatmap function,
-    which computes a Saliency Map for an image with a model.
+
     """
-    def __init__(self, model : tf.keras.Model):
-        """ Initialization function for creating a Saliency Map as XAI Method object.
+    def __init__(self, model : tf.keras.Model, num_eval=None):
+        """ Initialization function for creating a SHAP as XAI Method object.
 
         Args:
             model (keras.model):               Keras model object.
-            layerName (str):                   Not required in Saliency Maps, but defined by Abstract Base Class.
+            layerName (str):                   Layer name of the convolutional layer for heatmap computation.
+            num_eval (int):                    Number of evaluations for SHAP computation.
         """
         # Cache class parameters
         self.model = model
+        self.max_eval = num_eval
+        if self.max_eval is None : self.max_eval = 500
 
+        # define a masker that is used to mask out partitions of the input image.
+        self.masker = self.define_masker()
+        self.explainer = shap.Explainer(self.model, self.masker)
+    
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
     def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
-        """ Core function for computing the Saliency Map for a provided image and for specific classification outcome.
+        """ Core function for computing the XAI heatmap for a provided image and for specific classification outcome.
 
         ???+ attention
             Be aware that the image has to be provided in batch format.
@@ -76,32 +71,50 @@ class SaliencyMap(XAImethod_Base):
         Args:
             image (numpy.ndarray):              Image matrix encoded as NumPy Array (provided as one-element batch).
             class_index (int):                  Classification index for which the heatmap should be computed.
+            all_class (bool):                   If True, the heatmap should be computed for all classes.
             eps (float):                        Epsilon for rounding.
 
-        The returned heatmap is encoded within a range of [0,1]
+        The returned heatmap should be encoded within a range of [0,1]
 
         ???+ attention
             The shape of the returned heatmap is 2D -> batch and channel axis will be removed.
 
         Returns:
-            heatmap (numpy.ndarray):            Computed Saliency Map for provided image.
+            heatmap (numpy.ndarray):            Computed XAI heatmap for provided image.
         """
-        # Compute gradient for desierd class index
-        with tf.GradientTape() as tape:
-            inputs = tf.cast(image, tf.float32)
-            tape.watch(inputs)
-            preds = self.model(inputs)
-            loss = preds[:, class_index]
-        gradient = tape.gradient(loss, inputs)
-        # Obtain maximum gradient based on feature map of last conv layer
-        gradient = tf.reduce_max(gradient, axis=-1)
-        # Convert to NumPy & Remove batch axis
-        heatmap = gradient.numpy()[0,:,:]
+        img_float = image.astype(np.float32)
 
-        # Intensity normalization to [0,1]
-        numer = heatmap - np.min(heatmap)
-        denom = (heatmap.max() - heatmap.min()) + eps
-        heatmap = numer / denom
+        if img_float.max() > 1:
+            img_normalized = (img_float - img_float.min()) / (img_float.max() - img_float.min())
+        else:
+            img_normalized = img_float
+        # Compute SHAP values
+        shap_values = self.explainer(img_normalized, max_evals=self.max_eval,batch_size=50,
+                                     outputs = [class_index])
+        shap_exp = shap_values
+        if len(shap_exp.output_dims) == 1:
+            shap_values = [shap_exp.values[..., i] for i in range(shap_exp.values.shape[-1])]
+        elif len(shap_exp.output_dims) == 0:
+            shap_values = shap_exp.values
+        else:
+            raise Exception("Number of outputs needs to have support added!! (probably a simple fix)")
 
-        # Return the resulting heatmap
-        return heatmap
+        shap_values = np.array(shap_values)
+        shap_values = shap_values.squeeze()
+
+        return shap_values
+    
+    #---------------------------------------------#
+    #              Define Masker                  #
+    #---------------------------------------------#
+    def define_masker(self):
+        """ Internal function. Define a masker for SHAP computation.
+
+        The masker is used to mask out partitions of the input image.
+        """
+
+        if len(self.model.input_shape) == 4:
+            blur_shape = 'blur(' + str(self.model.input_shape[1]) + ',' + str(self.model.input_shape[2]) + ')'
+            masker = shap.maskers.Image(blur_shape, self.model.input_shape[1:4])
+            return masker
+        raise ValueError("SHAP masker not defined for input shape: {}".format(self.model.input_shape))

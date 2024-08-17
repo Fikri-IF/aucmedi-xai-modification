@@ -42,7 +42,7 @@ class OcclusionSensitivity(XAImethod_Base):
     This class provides functionality for running the compute_heatmap function,
     which computes a Occlusion Sensitivity Map for an image with a model.
     """
-    def __init__(self, model, layerName=None, patch_size=16):
+    def __init__(self, model : tf.keras.Model, num_eval=None):
         """ Initialization function for creating a Occlusion Sensitivity Map as XAI Method object.
 
         Args:
@@ -51,12 +51,12 @@ class OcclusionSensitivity(XAImethod_Base):
         """
         # Cache class parameters
         self.model = model
-        self.patch_size = patch_size
+        self.patch_size = num_eval or 16
 
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
-    def compute_heatmap(self, image, class_index, eps=1e-8):
+    def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
         """ Core function for computing the Occlusion Sensitivity Map for a provided image and for specific classification outcome.
 
         ???+ attention

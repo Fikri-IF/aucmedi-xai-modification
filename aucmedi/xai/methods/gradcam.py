@@ -52,18 +52,18 @@ class GradCAM(XAImethod_Base):
     This class provides functionality for running the compute_heatmap function,
     which computes a Grad-CAM heatmap for an image with a model.
     """
-    def __init__(self, model, layerName=None):
+    def __init__(self, model : tf.keras.Model,  layer_name=None):
         """ Initialization function for creating a Grad-CAM as XAI Method object.
 
         Args:
             model (keras.model):               Keras model object.
-            layerName (str):                   Layer name of the convolutional layer for heatmap computation.
+            layer_name (str):                   Layer name of the convolutional layer for heatmap computation.
         """
         # Cache class parameters
         self.model = model
-        self.layerName = layerName
+        self.layer_name = layer_name
         # Try to find output layer if not defined
-        if self.layerName is None : self.layerName = self.find_output_layer()
+        if self.layer_name is None : self.layer_name = self.find_output_layer()
 
     #---------------------------------------------#
     #            Identify Output Layer            #
@@ -85,7 +85,7 @@ class GradCAM(XAImethod_Base):
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
-    def compute_heatmap(self, image, class_index, eps=1e-8):
+    def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
         """ Core function for computing the Grad-CAM heatmap for a provided image and for specific classification outcome.
 
         ???+ attention
@@ -106,7 +106,7 @@ class GradCAM(XAImethod_Base):
         """
         # Gradient model construction
         gradModel = tf.keras.models.Model(inputs=[self.model.inputs],
-                         outputs=[self.model.get_layer(self.layerName).output,
+                         outputs=[self.model.get_layer(self.layer_name).output,
                                   self.model.output])
         # Compute gradient for desierd class index
         with tf.GradientTape() as tape:

@@ -48,22 +48,23 @@ class IntegratedGradients(XAImethod_Base):
     This class provides functionality for running the compute_heatmap function,
     which computes an Integrated Gradients Map for an image with a model.
     """
-    def __init__(self, model, layerName=None, num_steps=50):
+    def __init__(self, model : tf.keras.Model, num_eval=None):
         """ Initialization function for creating a Integrated Gradients Map as XAI Method object.
 
         Args:
             model (keras.model):            Keras model object.
             layerName (str):                Not required in Integrated Gradients Maps, but defined by Abstract Base Class.
-            num_steps (int):                Number of iterations for interpolation.
+            num_eval (int):                 Number of iterations for interpolation.
         """
         # Cache class parameters
         self.model = model
-        self.num_steps = num_steps
+        self.num_steps = num_eval
+        if self.num_steps is None : self.num_steps = 50
 
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
-    def compute_heatmap(self, image, class_index, eps=1e-8):
+    def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
         """ Core function for computing the Integrated Gradients Map for a provided image and for specific classification outcome.
 
         ???+ attention

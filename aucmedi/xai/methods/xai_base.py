@@ -38,40 +38,23 @@ class XAImethod_Base(ABC):
         from aucmedi.xai.methods.xai_base import XAImethod_Base
 
         class My_custom_XAImethod(XAImethod_Base):
-            def __init__(self, model, layerName=None):
-                pass
 
-            def compute_heatmap(self, image, class_index, eps=1e-8):
+            def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
                 pass
         ```
 
     ???+ info "Required Functions"
         | Function            | Description                                |
         | ------------------- | ------------------------------------------ |
-        | `__init__()`        | Object creation function.                  |
         | `compute_heatmap()` | Application of the XAI Method on an image. |
 
     """
-    #---------------------------------------------#
-    #                Initialization               #
-    #---------------------------------------------#
-    @abstractmethod
-    def __init__(self, model, layerName=None):
-        """ Initialization function for creating a XAI Method object.
-        ```
-        __init__(model, layerName=None)
-        ```
-
-        Args:
-            model (keras.model):               Keras model object.
-            layerName (str):                Layer name of the convolutional layer for heatmap computation.
-        """
-        pass
 
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
-    def compute_heatmap(self, image, class_index, eps=1e-8):
+    @abstractmethod
+    def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
         """ Core function for computing the XAI heatmap for a provided image and for specific classification outcome.
 
         ???+ attention
@@ -80,6 +63,7 @@ class XAImethod_Base(ABC):
         Args:
             image (numpy.ndarray):              Image matrix encoded as NumPy Array (provided as one-element batch).
             class_index (int):                  Classification index for which the heatmap should be computed.
+            all_class (bool):                   If True, the heatmap should be computed for all classes.
             eps (float):                        Epsilon for rounding.
 
         The returned heatmap should be encoded within a range of [0,1]

@@ -22,6 +22,7 @@
 # External Libraries
 import numpy as np
 from lime import lime_image
+import tensorflow as tf
 # Internal Libraries
 from aucmedi.xai.methods.xai_base import XAImethod_Base
 
@@ -46,22 +47,23 @@ class LimePro(XAImethod_Base):
     This class provides functionality for running the compute_heatmap function,
     which computes a Lime Pro Map for an image with a model.
     """
-    def __init__(self, model, layerName=None, num_samples=1000):
+    def __init__(self, model : tf.keras.Model, num_eval=None):
         """ Initialization function for creating a Lime Pro Map as XAI Method object.
 
         Args:
             model (keras.model):            Keras model object.
             layerName (str):                Not required in LIME Pro/Con Maps, but defined by Abstract Base Class.
-            num_samples (int):              Number of iterations for LIME instance explanation.
+            num_eval (int):                 Number of sample for LIME instance explanation.
         """
         # Cache class parameters
         self.model = model
-        self.num_samples = num_samples
+        self.num_samples = num_eval
+        if self.num_samples is None : self.num_samples = 1000
 
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
-    def compute_heatmap(self, image, class_index, eps=1e-8):
+    def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
         """ Core function for computing the Lime Pro Map for a provided image and for specific classification outcome.
 
         ???+ attention

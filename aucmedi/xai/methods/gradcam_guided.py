@@ -55,7 +55,7 @@ class GuidedGradCAM(XAImethod_Base):
     This class provides functionality for running the compute_heatmap function,
     which computes a Guided Grad-CAM heatmap for an image with a model.
     """
-    def __init__(self, model, layerName=None):
+    def __init__(self, model : tf.keras.Model, layer_name=None):
         """ Initialization function for creating a Guided Grad-CAM as XAI Method object.
 
         Args:
@@ -63,13 +63,13 @@ class GuidedGradCAM(XAImethod_Base):
             layerName (str):                   Layer name of the convolutional layer for heatmap computation.
         """
         # Initialize XAI methods
-        self.bp = GuidedBackpropagation(model, layerName)
-        self.gc = GradCAM(model, layerName)
+        self.bp = GuidedBackpropagation(model)
+        self.gc = GradCAM(model, layer_name)
 
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
-    def compute_heatmap(self, image, class_index, eps=1e-8):
+    def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
         """ Core function for computing the Guided Grad-CAM heatmap for a provided image and for specific classification outcome.
 
         ???+ attention

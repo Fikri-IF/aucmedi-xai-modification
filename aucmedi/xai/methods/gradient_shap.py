@@ -19,56 +19,53 @@
 #-----------------------------------------------------#
 #                   Library imports                   #
 #-----------------------------------------------------#
-# External Libraries
+import shap
 import numpy as np
 import tensorflow as tf
 # Internal Libraries
 from aucmedi.xai.methods.xai_base import XAImethod_Base
 
 #-----------------------------------------------------#
-#           Saliency Maps / Backpropagation           #
+#                        SHAP                         #
 #-----------------------------------------------------#
-class SaliencyMap(XAImethod_Base):
-    """ XAI Method for Saliency Map (also called Backpropagation).
+class GradientShap(XAImethod_Base):
+    """ XAI Method for SHapley Additive exPlanations (SHAP).
 
     Normally, this class is used internally in the [aucmedi.xai.decoder.xai_decoder][] in the AUCMEDI XAI module.
 
     ??? abstract "Reference - Implementation #1"
-        Author: Yasuhiro Kubota <br>
-        GitHub Profile: [https://github.com/keisen](https://github.com/keisen) <br>
-        Date: Aug 11, 2020 <br>
-        [https://github.com/keisen/tf-keras-vis/](https://github.com/keisen/tf-keras-vis/) <br>
 
     ??? abstract "Reference - Implementation #2"
-        Author: Huynh Ngoc Anh <br>
-        GitHub Profile: [https://github.com/experiencor](https://github.com/experiencor) <br>
-        Date: Jun 23, 2017 <br>
-        [https://github.com/experiencor/deep-viz-keras/](https://github.com/experiencor/deep-viz-keras/) <br>
 
     ??? abstract "Reference - Publication"
-        Karen Simonyan, Andrea Vedaldi, Andrew Zisserman. 20 Dec 2013.
-        Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps.
-        <br>
-        [https://arxiv.org/abs/1312.6034](https://arxiv.org/abs/1312.6034)
 
     This class provides functionality for running the compute_heatmap function,
-    which computes a Saliency Map for an image with a model.
+
     """
-    def __init__(self, model : tf.keras.Model):
-        """ Initialization function for creating a Saliency Map as XAI Method object.
+    def __init__(self, model : tf.keras.Model, background):
+        """ Initialization function for creating a SHAP as XAI Method object.
 
         Args:
             model (keras.model):               Keras model object.
-            layerName (str):                   Not required in Saliency Maps, but defined by Abstract Base Class.
+            layerName (str):                   Layer name of the convolutional layer for heatmap computation.
+            num_eval (int):                    Number of evaluations for SHAP computation.
+            background (numpy.ndarray):        Background data for SHAP computation.
         """
         # Cache class parameters
         self.model = model
+        
+        # Normalize the background
+        self.background = self.normalize(background)
+        if self.background is None: raise ValueError("Background data is required for DeepSHAP computation.")
 
+        self.gradientExplainer = shap.GradientExplainer(self.model, self.background)
+        self.result = None
+    
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
     def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
-        """ Core function for computing the Saliency Map for a provided image and for specific classification outcome.
+        """ Core function for computing the XAI heatmap for a provided image and for specific classification outcome.
 
         ???+ attention
             Be aware that the image has to be provided in batch format.
@@ -76,32 +73,51 @@ class SaliencyMap(XAImethod_Base):
         Args:
             image (numpy.ndarray):              Image matrix encoded as NumPy Array (provided as one-element batch).
             class_index (int):                  Classification index for which the heatmap should be computed.
+            all_class (bool):                   If True, the heatmap should be computed for all classes.
             eps (float):                        Epsilon for rounding.
 
-        The returned heatmap is encoded within a range of [0,1]
+        The returned heatmap should be encoded within a range of [0,1]
 
         ???+ attention
             The shape of the returned heatmap is 2D -> batch and channel axis will be removed.
 
         Returns:
-            heatmap (numpy.ndarray):            Computed Saliency Map for provided image.
+            heatmap (numpy.ndarray):            Computed XAI heatmap for provided image.
         """
-        # Compute gradient for desierd class index
-        with tf.GradientTape() as tape:
-            inputs = tf.cast(image, tf.float32)
-            tape.watch(inputs)
-            preds = self.model(inputs)
-            loss = preds[:, class_index]
-        gradient = tape.gradient(loss, inputs)
-        # Obtain maximum gradient based on feature map of last conv layer
-        gradient = tf.reduce_max(gradient, axis=-1)
-        # Convert to NumPy & Remove batch axis
-        heatmap = gradient.numpy()[0,:,:]
 
-        # Intensity normalization to [0,1]
-        numer = heatmap - np.min(heatmap)
-        denom = (heatmap.max() - heatmap.min()) + eps
-        heatmap = numer / denom
+        image = self.normalize(image)
+        # Compute SHAP values
+        if all_class:
+            if self.result is None:
+                self.result = self.gradientExplainer.shap_values(image)
 
-        # Return the resulting heatmap
-        return heatmap
+            shap_values = self.result[:, :, :, :, class_index]
+
+            return shap_values[0]
+            
+        else:
+            raw_shap_values, index =  self.gradientExplainer.shap_values(image, ranked_outputs=1, output_rank_order='max')
+            shap_values = raw_shap_values[:, :, :, :, 0]
+            return shap_values[0]
+        
+        # Pick the first rank means the prediction class
+        # shap_values = raw_shap_values[:, :, :, :, class_index] 
+        #return shap_values[0]
+    
+    
+    def normalize(self, x):
+        """ Normalize the input image.
+
+        Args:
+            x (numpy.ndarray):                  Image matrix encoded as NumPy Array.
+
+        The returned image is normalized within a range of [0,1].
+
+        """
+        img_float = x.astype(np.float32)
+
+        if img_float.max() > 1:
+            x_normalized = (img_float - img_float.min()) / (img_float.max() - img_float.min())
+        else:
+            x_normalized = img_float
+        return x_normalized

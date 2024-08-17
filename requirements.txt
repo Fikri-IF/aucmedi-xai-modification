@@ -16,3 +16,4 @@ batchgenerators==0.25
 volumentations-aucmedi==1.0.1
 plotnine==0.12.4
 pathos==0.3.0
+shap==0.45.1

@@ -59,7 +59,7 @@ class GuidedBackpropagation(XAImethod_Base):
     This class provides functionality for running the compute_heatmap function,
     which computes a Guided Backpropagation for an image with a model.
     """
-    def __init__(self, model, layerName=None):
+    def __init__(self, model : tf.keras.Model):
         """ Initialization function for creating Guided Backpropagation as XAI Method object.
 
         Args:
@@ -89,7 +89,7 @@ class GuidedBackpropagation(XAImethod_Base):
     #---------------------------------------------#
     #             Heatmap Computation             #
     #---------------------------------------------#
-    def compute_heatmap(self, image, class_index, eps=1e-8):
+    def compute_heatmap(self, image, class_index, all_class=False, eps=1e-8):
         """ Core function for computing the Guided Backpropagation for a provided image and for specific classification outcome.
 
         ???+ attention
