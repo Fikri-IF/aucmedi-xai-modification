@@ -12,6 +12,7 @@ release.sh
 # Testing
 testing/
 .pytest_cache
+.coverage
 debug.sh
 debug.py
 
