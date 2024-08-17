@@ -16,3 +16,4 @@ debug.py
 
 # Visual Studio Code
 .vscode
+.venv
