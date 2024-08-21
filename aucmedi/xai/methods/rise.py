@@ -153,8 +153,6 @@ class Rise(XAImethod_Base):
             N: Number of masks.
             s: Size of mask before upsampling.
             p1: Probability of setting element value to 1 in the initial mask.
-            verbose: Verbose level for the model prediction step.
-            batch_size: Batch size for predictions.
 
         Returns:
             masks: The distribution of upsampled masks.
