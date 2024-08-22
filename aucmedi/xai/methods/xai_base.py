@@ -44,9 +44,10 @@ class XAImethod_Base(ABC):
         ```
 
     ???+ info "Required Functions"
-        | Function            | Description                                |
-        | ------------------- | ------------------------------------------ |
-        | `compute_heatmap()` | Application of the XAI Method on an image. |
+        | Function              | Description                                |
+        | --------------------  | ------------------------------------------ |
+        | `compute_heatmap()`   | Application of the XAI Method on an image. |
+        | `visualize_heatmap()` | Visualization of the heatmap.              |
 
     """
 
@@ -73,5 +74,26 @@ class XAImethod_Base(ABC):
 
         Returns:
             heatmap (numpy.ndarray):            Computed XAI heatmap for provided image.
+        """
+        pass
+
+    #---------------------------------------------#
+    #              Visualization                  #
+    #---------------------------------------------#
+    @abstractmethod
+    def visualize_heatmap(self, image, heatmap, out_path=None,
+                    alpha=0.4, labels=None, width=20,
+                    aspect=0.2, hspace=0.2,
+                    invert=False):
+        """ Function for visualizing the heatmap on top of the image.
+
+        Args:
+            image (numpy.ndarray):              Image matrix encoded as NumPy Array (provided as one-element batch).
+            heatmap (numpy.ndarray):            Computed XAI heatmap for provided image.
+            alpha (float):                      Alpha value for heatmap overlay.
+            cmap (str):                         Colormap for heatmap visualization.
+
+        Returns:
+            overlay (numpy.ndarray):            Overlay of the heatmap on top of the image.
         """
         pass
