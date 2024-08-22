@@ -49,4 +49,3 @@
 #-----------------------------------------------------#
 # Import XAI functionalities
 from aucmedi.xai.decoder import XAIDecoder
-from aucmedi.xai.decoder import XAIResult

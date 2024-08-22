@@ -28,7 +28,6 @@ from aucmedi.data_processing.subfunctions import Resize
 from aucmedi.data_processing.data_generator import DataGenerator
 from aucmedi.neural_network.model import NeuralNetwork
 from aucmedi.xai.methods import *
-from aucmedi.xai.xai_visualizer import XAIResult
 
 class XAIDecoder():
     def __init__(self, data_gen : DataGenerator,
@@ -44,35 +43,62 @@ class XAIDecoder():
         self.n_classes = model.n_labels
         self.sample_list = data_gen.samples
         self.labels = class_names if class_names is not None else ["Class_" + str(i) for i in range(0, self.n_classes)]
+
+        self.results = []
+        self.images = []
+        self.labels_result = []
+        self.samples = np.array(self.sample_list)
     
     def explain(self):
-        results = []
-        images = []
-        labels = []
-        samples = []
         for i, sample in enumerate(self.sample_list):
             img_batch, shape_org, img_org = self.__load_and_preprocess_image(sample, i)
             
             if self.preds is not None:
                 class_index = np.argmax(self.preds[i])
                 result = self.__process_preds(img_batch, shape_org, class_index)
-                labels.append([self.labels[class_index]])
+                self.labels_result.append([self.labels[class_index]])
             else:
                 result = self.__process_all_classes(img_batch, shape_org)
-                labels.append(self.labels)
-            results.append(result)
-            images.append(img_org)
-            samples.append(sample)
+                self.labels_result.append(self.labels)
+            self.results.append(result)
+            self.images.append(img_org)
 
-        results = np.array(results)
-        images = np.array(images)
-        labels = np.array(labels)
-        samples = np.array(samples)
-
-        return XAIResult(results, images, labels, samples)
+        self.results = np.array(self.results)
+        self.images = np.array(self.images)
+        self.labels_result = np.array(self.labels_result)
+    
+    def get_method(self) -> XAImethod_Base :
+        return self.__method
     
     def set_method(self, method : XAImethod_Base):
         self.__method = method
+
+    def visualize_xai(self, alpha=0.4, invert=False, out_path=None):
+        """
+        Visualizes the XAI results.
+
+        Parameters:
+        - xai_result: XAIResult object containing images, xai_maps, labels, and samples.
+        - alpha: float, opacity level for the XAI map overlay.
+        - invert: bool, whether to invert the colors.
+        - out_path: str, directory to save the visualized images.
+        """
+
+        num_classes = self.results.shape[1]
+        if invert: self.images = -self.images
+
+        for i in range(len(self.images)):
+            for j in range(num_classes):
+                file_name = None
+                if out_path is not None:
+
+                    os.makedirs(out_path, exist_ok=True)
+
+                    file_name = f"{self.labels_result[i][j]}_{self.samples[i]}"
+                    if os.sep in file_name : file_name = file_name.replace(os.sep, ".")
+                    file_name = os.path.join(out_path, file_name)
+                    
+                self.__method.visualize_heatmap(self.images[i], self.results[i][j], out_path=file_name, alpha=alpha, labels=self.labels_result)
                 
     def __load_and_preprocess_image(self, sample, index):
         img_org = image_loader(sample, self.data_gen.path_imagedir,

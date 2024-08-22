@@ -82,9 +82,7 @@ class XAImethod_Base(ABC):
     #---------------------------------------------#
     @abstractmethod
     def visualize_heatmap(self, image, heatmap, out_path=None,
-                    alpha=0.4, labels=None, width=20,
-                    aspect=0.2, hspace=0.2,
-                    invert=False):
+                    alpha=0.4, labels=None):
         """ Function for visualizing the heatmap on top of the image.
 
         Args:

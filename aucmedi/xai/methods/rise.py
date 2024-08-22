@@ -24,6 +24,8 @@ import tensorflow as tf
 from skimage.transform import resize
 from skimage.filters import gaussian
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+from PIL import Image
 # Internal Libraries
 from aucmedi.xai.methods.xai_base import XAImethod_Base
 
@@ -193,3 +195,23 @@ class Rise(XAImethod_Base):
         else:
             x_normalized = img_float
         return x_normalized
+
+    def visualize_heatmap(self, image, heatmap, out_path=None,
+                    alpha=0.4, labels=None):
+        if image.shape[-1] == 1:
+            image = np.concatenate((image,) * 3, axis=-1)
+
+        heatmap = np.uint8(heatmap * 255)
+        jet = plt.get_cmap("jet")
+        jet_colors = jet(np.arange(256))[:, :3]
+        jet_heatmap = jet_colors[heatmap] * 255
+
+        si_img = jet_heatmap * alpha + (1 - alpha) * image
+        si_img = si_img.astype(np.uint8)
+        pil_img = Image.fromarray(si_img)
+        if out_path is None:
+            plt.imshow(si_img)
+            plt.axis('off')  # Hide the axis
+            plt.show()
+        else:
+            pil_img.save(out_path)

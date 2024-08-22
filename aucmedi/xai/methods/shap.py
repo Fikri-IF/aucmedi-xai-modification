@@ -22,6 +22,7 @@
 import shap
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 # Internal Libraries
 from aucmedi.xai.methods.xai_base import XAImethod_Base
 
@@ -118,3 +119,70 @@ class Shap(XAImethod_Base):
             masker = shap.maskers.Image(blur_shape, self.model.input_shape[1:4])
             return masker
         raise ValueError("SHAP masker not defined for input shape: {}".format(self.model.input_shape))
+
+    def visualize_heatmap(self, image, heatmap, out_path=None,
+                    alpha=0.4, labels=None):
+        
+        width = 20
+        aspect = 0.2
+        hspace = 0.2
+
+        pixel_values = image.astype(np.float32)
+        pixel_values = (pixel_values - pixel_values.min()) / (pixel_values.max() - pixel_values.min())
+
+        if not isinstance(heatmap, list):
+            heatmap = [heatmap]
+
+        if len(heatmap[0].shape) == 3:
+            heatmap = [v.reshape(1, *v.shape) for v in heatmap]
+            pixel_values = pixel_values.reshape(1, *pixel_values.shape)
+
+        if labels is not None:
+            if isinstance(labels, list):
+                labels = np.array(labels).reshape(1, -1)
+
+        x = pixel_values
+        fig_size = np.array([3 * (len(heatmap) + 1), 1.5 * (x.shape[0] + 1)])
+        if fig_size[0] > width:
+            fig_size *= width / fig_size[0]
+        fig, axes = plt.subplots(nrows=x.shape[0], ncols=len(heatmap) + 1, figsize=fig_size)
+        if len(axes.shape) == 1:
+            axes = axes.reshape(1, axes.size)
+        for row in range(x.shape[0]):
+            x_curr = x[row].copy()
+
+            if len(x_curr.shape) == 3 and x_curr.shape[2] == 1:
+                x_curr = x_curr.reshape(x_curr.shape[:2])
+
+            if len(x_curr.shape) == 3 and x_curr.shape[2] == 3:
+                x_curr_gray = 0.2989 * x_curr[:, :, 0] + 0.5870 * x_curr[:, :, 1] + 0.1140 * x_curr[:, :, 2]
+                x_curr_disp = x_curr
+            else:
+                x_curr_gray = x_curr
+                x_curr_disp = x_curr
+
+            axes[row, 0].imshow(x_curr_disp, cmap=plt.get_cmap('gray'))
+            axes[row, 0].axis('off')
+
+            if len(heatmap[0][row].shape) == 2:
+                abs_vals = np.stack([np.abs(heatmap[i]) for i in range(len(heatmap))], 0).flatten()
+            else:
+                abs_vals = np.stack([np.abs(heatmap[i].sum(-1)) for i in range(len(heatmap))], 0).flatten()
+            max_val = np.nanpercentile(abs_vals, 99.9)
+
+            for i in range(len(heatmap)):
+                if labels is not None:
+                    axes[row, i + 1].set_title(labels[row, i])
+                sv = heatmap[i][row] if len(heatmap[i][row].shape) == 2 else heatmap[i][row].sum(-1)
+                axes[row, i + 1].imshow(x_curr_gray, cmap=plt.get_cmap('gray'), alpha=alpha, extent=(-1, sv.shape[1], sv.shape[0], -1))
+                im = axes[row, i + 1].imshow(sv, cmap=shap.plots.colors.red_transparent_blue, vmin=-max_val, vmax=max_val)
+                axes[row, i + 1].axis('off')
+
+        fig.subplots_adjust(hspace=hspace)
+        cb = fig.colorbar(im, ax=np.ravel(axes).tolist(), label="SHAP value", orientation="horizontal", aspect=fig_size[0] / aspect)
+        cb.outline.set_visible(False)
+
+        if out_path is None:
+            plt.show()
+        else:
+            fig.savefig(out_path)

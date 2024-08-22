@@ -22,6 +22,8 @@
 # External Libraries
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
+from PIL import Image
 # Internal Libraries
 from aucmedi.xai.methods.xai_base import XAImethod_Base
 
@@ -137,3 +139,23 @@ class GradCAMpp(XAImethod_Base):
 
         # Return the resulting heatmap
         return heatmap
+
+    def visualize_heatmap(self, image, heatmap, out_path=None,
+                    alpha=0.4, labels=None):
+        if image.shape[-1] == 1:
+            image = np.concatenate((image,) * 3, axis=-1)
+
+        heatmap = np.uint8(heatmap * 255)
+        jet = plt.get_cmap("jet")
+        jet_colors = jet(np.arange(256))[:, :3]
+        jet_heatmap = jet_colors[heatmap] * 255
+
+        si_img = jet_heatmap * alpha + (1 - alpha) * image
+        si_img = si_img.astype(np.uint8)
+        pil_img = Image.fromarray(si_img)
+        if out_path is None:
+            plt.imshow(si_img)
+            plt.axis('off')  # Hide the axis
+            plt.show()
+        else:
+            pil_img.save(out_path)

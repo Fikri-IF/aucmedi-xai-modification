@@ -97,34 +97,38 @@ class xaiTEST(unittest.TestCase):
         xai_decoder = XAIDecoder(self.datagen, self.model, self.xai_method, class_names=self.class_names, preds=self.preds)
         self.assertIsInstance(xai_decoder, XAIDecoder)
     
+    def test_Decoder_Setter(self):
+        xai_decoder = XAIDecoder(self.datagen, self.model, self.xai_method, class_names=self.class_names, preds=self.preds)
+        new_method = Shap(self.model.model)
+        xai_decoder.set_method(new_method)
+        self.assertIsInstance(xai_decoder.get_method(),XAImethod_Base)
+    
     def test_Decoder_argmax_output(self):
         xai_decoder = XAIDecoder(self.datagen, self.model, self.xai_method, class_names=self.class_names, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
 
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_Decoder_allClasses_output(self):
         xai_decoder = XAIDecoder(self.datagen, self.model, self.xai_method, class_names=self.class_names)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
 
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
 
     def test_Decoder_argmax_visualize(self):
         path_xai = os.path.join(self.tmp_data.name)
 
         xai_decoder = XAIDecoder(self.datagen, self.model, self.xai_method, class_names=self.class_names, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -144,8 +148,8 @@ class xaiTEST(unittest.TestCase):
         path_xai = os.path.join(self.tmp_data.name)
 
         xai_decoder = XAIDecoder(self.datagen, self.model, self.xai_method, class_names=self.class_names)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -172,8 +176,13 @@ class xaiTEST(unittest.TestCase):
         heatmap = np.expand_dims(heatmap, axis=(0,1))
         labels = np.array([self.class_names])
         path_xai = os.path.join(self.tmp_data.name)
-        xai_result = XAIResult(images=image, xai_maps=heatmap, labels=labels, samples=self.sampleList)
-        xai_result.visualize_xai(out_path=path_xai, alpha=0.4)
+
+        xai_decoder = XAIDecoder(self.datagen, self.model, self.xai_method, class_names=self.class_names)
+        xai_decoder.results = heatmap
+        xai_decoder.images = image
+        xai_decoder.labels_result = labels
+
+        xai_decoder.visualize_xai(out_path=path_xai, alpha=0.4)
         file_name = labels[0][np.argmax(self.preds[0])] + "_" + self.sampleList[0]
         self.assertTrue(os.path.exists(path_xai))
         img = image_loader(sample=self.sampleList[0],
@@ -184,8 +193,6 @@ class xaiTEST(unittest.TestCase):
                           image_format=None)
         self.assertTrue(np.array_equal(img.shape, hm.shape))
         self.assertFalse(np.array_equal(img, hm))
-    
-
 
     #-------------------------------------------------#
     #              XAI Methods: Grad-Cam              #
@@ -202,25 +209,23 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_GradCam_decoder_Preds(self):
         xai_method = GradCAM(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
 
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
 
     def test_XAImethod_GradCam_decoder_NoPreds(self):
         xai_method = GradCAM(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
 
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
 
     def test_XAImethod_GradCam_visualize_Preds(self):
@@ -228,8 +233,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GradCAM(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -250,8 +255,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GradCAM(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -283,25 +288,23 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_GradCamPP_decoder_Preds(self):
         xai_method = GradCAMpp(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
 
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
 
     def test_XAImethod_GradCamPP_decoder_NoPreds(self):
         xai_method = GradCAMpp(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
 
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
     
     def test_XAImethod_GradCamPP_visualize_Preds(self):
@@ -309,8 +312,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GradCAMpp(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -331,8 +334,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GradCAMpp(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -364,23 +367,21 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_SaliencyMap_decoder_Preds(self):
         xai_method = SaliencyMap(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
 
     def test_XAImethod_SaliencyMap_decoder_NoPreds(self):
         xai_method = SaliencyMap(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
     
     def test_XAImethod_SaliencyMap_visualize_Preds(self):
@@ -388,8 +389,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = SaliencyMap(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -410,8 +411,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = SaliencyMap(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -444,23 +445,21 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_GuidedBackprop_decoder_Preds(self):
         xai_method = GuidedBackpropagation(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_XAImethod_GuidedBackprop_decoder_NoPreds(self):
         xai_method = GuidedBackpropagation(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
 
 
@@ -469,8 +468,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GuidedBackpropagation(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -491,8 +490,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GuidedBackpropagation(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -524,23 +523,21 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_IntegratedGradients_decoder_Preds(self):
         xai_method = IntegratedGradients(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_XAImethod_IntegratedGradients_decoder_NoPreds(self):
         xai_method = IntegratedGradients(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
     
     def test_XAImethod_IntegratedGradients_visualize_Preds(self):
@@ -548,8 +545,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = IntegratedGradients(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -570,8 +567,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = IntegratedGradients(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -603,23 +600,21 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_GuidedGradCAM_decoder_Preds(self):
         xai_method = GuidedGradCAM(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_XAImethod_GuidedGradCAM_decoder_NoPreds(self):
         xai_method = GuidedGradCAM(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
     
     def test_XAImethod_GuidedGradCAM_visualize_Preds(self):
@@ -627,8 +622,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GuidedGradCAM(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -649,8 +644,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GuidedGradCAM(self.model.model)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -683,23 +678,21 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_OcclusionSensitivity_decoder_Preds(self):
         xai_method = OcclusionSensitivity(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_XAImethod_OcclusionSensitivity_decoder_NoPreds(self):
         xai_method = OcclusionSensitivity(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
     
     def test_XAImethod_OcclusionSensitivity_visualize_Preds(self):
@@ -707,8 +700,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = OcclusionSensitivity(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -729,8 +722,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = OcclusionSensitivity(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -763,23 +756,21 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_LimeCon_decoder_Preds(self):
         xai_method = LimeCon(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_XAImethod_LimeCon_decoder_NoPreds(self):
         xai_method = LimeCon(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
     
     def test_XAImethod_LimeCon_visualize_Preds(self):
@@ -787,8 +778,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = LimeCon(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -809,8 +800,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = LimeCon(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -842,23 +833,21 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_LimePro_decoder_Preds(self):
         xai_method = LimePro(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_XAImethod_LimePro_decoder_NoPreds(self):
         xai_method = LimePro(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
     
     def test_XAImethod_LimePro_visualize_Preds(self):
@@ -866,8 +855,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = LimePro(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -888,8 +877,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = LimePro(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -921,28 +910,30 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_Shap_decoder_Preds(self):
         xai_method = Shap(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        self.assertTrue(isinstance(xai_result, XAIResult))
-        self.assertTrue(np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32,3)))
-        self.assertTrue(np.array_equal(xai_result.images.shape, (10, 32, 32,3)))
-        self.assertTrue(np.array_equal(xai_result.labels.shape,(10, 1)))
+        xai_decoder.explain()
+        self.assertTrue(
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32,3)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
+        )
     
     def test_XAImethod_Shap_decoder_NoPreds(self):
         xai_method = Shap(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        self.assertTrue(isinstance(xai_result, XAIResult))
-        self.assertTrue(np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32,3)))
-        self.assertTrue(np.array_equal(xai_result.images.shape, (10, 32, 32,3)))
-        self.assertTrue(np.array_equal(xai_result.labels.shape,(10, self.total_class)))
+        xai_decoder.explain()
+        self.assertTrue(
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32, 3)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
+        )
     
     def test_XAImethod_Shap_visualize_Preds(self):
         path_xai = os.path.join(self.tmp_data.name)
 
         xai_method = Shap(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -955,8 +946,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = Shap(self.model.model, num_eval=self.num_eval)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -980,28 +971,30 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_DeepShap_decoder_Preds(self):
         xai_method = DeepShap(self.model.model, background=self.background)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        self.assertTrue(isinstance(xai_result, XAIResult))
-        self.assertTrue(np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32,3)))
-        self.assertTrue(np.array_equal(xai_result.images.shape, (10, 32, 32,3)))
-        self.assertTrue(np.array_equal(xai_result.labels.shape,(10, 1)))
+        xai_decoder.explain()
+        self.assertTrue(
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32,3)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
+        )
             
     def test_XAImethod_DeepShap_decoder_NoPreds(self):
         xai_method = DeepShap(self.model.model, background=self.background)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        self.assertTrue(isinstance(xai_result, XAIResult))
-        self.assertTrue(np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32,3)))
-        self.assertTrue(np.array_equal(xai_result.images.shape, (10, 32, 32,3)))
-        self.assertTrue(np.array_equal(xai_result.labels.shape,(10, self.total_class)))
+        xai_decoder.explain()
+        self.assertTrue(
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32, 3)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
+        )
     
     def test_XAImethod_DeepShap_visualize_Preds(self):
         path_xai = os.path.join(self.tmp_data.name)
 
         xai_method = DeepShap(self.model.model, background=self.background)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -1014,8 +1007,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = DeepShap(self.model.model, background=self.background)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -1023,8 +1016,7 @@ class xaiTEST(unittest.TestCase):
                 path_xai_file = os.path.join(os.path.join(self.tmp_data.name),
                                              file_xai)
                 self.assertTrue(os.path.exists(path_xai_file))
-        
-
+    
     #-------------------------------------------------#
     #           XAI Methods: GradientSHAP             #
     #-------------------------------------------------#
@@ -1040,34 +1032,30 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_GradientShap_decoder_Preds(self):
         xai_method = GradientShap(self.model.model, background=self.background)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32,3)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32,3)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_XAImethod_GradientShap_decoder_NoPreds(self):
         xai_method = GradientShap(self.model.model, background=self.background)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32,3)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32, 3)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
-    
+
     def test_XAImethod_GradientShap_visualize_Preds(self):
         path_xai = os.path.join(self.tmp_data.name)
 
         xai_method = GradientShap(self.model.model, background=self.background)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -1080,8 +1068,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = GradientShap(self.model.model, background=self.background)
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
@@ -1105,23 +1093,21 @@ class xaiTEST(unittest.TestCase):
     def test_XAImethod_Rise_decoder_Preds(self):
         xai_method = Rise(self.model.model, total_mask=1000, mask_size=8, mode='blur')
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, 1, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, 1))
+            np.array_equal(xai_decoder.results.shape, (10, 1, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, 1))
         )
     
     def test_XAImethod_Rise_decoder_NoPreds(self):
         xai_method = Rise(self.model.model, total_mask=1000, mask_size=8, mode='blur')
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
+        xai_decoder.explain()
         self.assertTrue(
-            isinstance(xai_result, XAIResult) and
-            np.array_equal(xai_result.xai_maps.shape, (10, self.total_class, 32, 32)) and
-            np.array_equal(xai_result.images.shape, (10, 32, 32,3)) and
-            np.array_equal(xai_result.labels.shape,(10, self.total_class))
+            np.array_equal(xai_decoder.results.shape, (10, self.total_class, 32, 32)) and
+            np.array_equal(xai_decoder.images.shape, (10, 32, 32,3)) and
+            np.array_equal(xai_decoder.labels_result.shape,(10, self.total_class))
         )
     
     def test_XAImethod_Rise_visualize_Preds(self):
@@ -1129,8 +1115,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = Rise(self.model.model, total_mask=1000, mask_size=8, mode='blur')
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method, preds=self.preds)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             file_xai = self.class_names[np.argmax(self.preds[i])] + "_" + self.sampleList[i]
@@ -1151,8 +1137,8 @@ class xaiTEST(unittest.TestCase):
 
         xai_method = Rise(self.model.model, total_mask=1000, mask_size=8, mode='blur')
         xai_decoder = XAIDecoder(self.datagen, self.model, xai_method)
-        xai_result = xai_decoder.explain()
-        xai_result.visualize_xai(out_path=path_xai)
+        xai_decoder.explain()
+        xai_decoder.visualize_xai(out_path=path_xai)
 
         for i in range(0, len(self.sampleList)):
             for j in range(0, self.total_class):
