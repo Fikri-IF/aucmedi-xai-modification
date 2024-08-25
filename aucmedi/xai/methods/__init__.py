@@ -34,6 +34,7 @@ from aucmedi.xai.methods.shap import Shap
 from aucmedi.xai.methods.deep_shap import DeepShap
 from aucmedi.xai.methods.gradient_shap import GradientShap
 from aucmedi.xai.methods.rise import Rise
+from aucmedi.xai.methods.smoothgrad import SmoothGrad
 
 # #-----------------------------------------------------#
 # #                XAI method dictionary                #
