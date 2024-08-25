@@ -35,10 +35,15 @@ class GradientShap(XAImethod_Base):
     Normally, this class is used internally in the [aucmedi.xai.decoder.xai_decoder][] in the AUCMEDI XAI module.
 
     ??? abstract "Reference - Implementation #1"
-
-    ??? abstract "Reference - Implementation #2"
+        Author: Lundberg, Scott M and Lee, Su-In <br>
+        Date: August 23, 2024 <br>
+        [https://github.com2/shap/shap?tab=readme-ov-file](https://github.com/shap/shap?tab=readme-ov-file) <br>
 
     ??? abstract "Reference - Publication"
+        Lundberg, Scott M and Lee, Su-In. 2017.
+        A Unified Approach to Interpreting Model Predictions.
+        <br>
+        [http://papers.nips.cc/paper/7062-a-unified-approach-to-interpreting-model-predictions.pdf)
 
     This class provides functionality for running the compute_heatmap function,
 
