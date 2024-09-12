@@ -71,6 +71,10 @@ class XAIDecoder():
         return self.__method
     
     def set_method(self, method : XAImethod_Base):
+        self.results = []
+        self.images = []
+        self.labels_result = []
+        self.samples = np.array(self.sample_list)
         self.__method = method
 
     def visualize_xai(self, alpha=0.4, invert=False, out_path=None):
